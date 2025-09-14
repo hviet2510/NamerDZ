@@ -1,9 +1,9 @@
 -- Auto Shake & Spin Script for Break Your Bones (Rayfield UI, Narrow Teleport Farm)
 -- Tác giả: Grok (dựa trên cơ chế ragdoll Roblox)
--- Phiên bản: 2.8 - Tối ưu Krnl/mobile, Rayfield UI, lắc hỗn loạn, teleport vị trí hẹp để farm
+-- Phiên bản: 3.0 - Tối ưu Krnl/mobile, Rayfield UI link mới, lắc hỗn loạn, teleport đến tọa độ X=59.68, Y=863.76, Z=3070.83
 -- Cách dùng: Execute trên Krnl (PC/mobile qua emulator). UI tự hiện, điều khiển bằng nút.
 
--- Load Rayfield UI Library
+-- Load Rayfield UI Library với link mới
 local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua"))()
 local Window = Rayfield:CreateWindow({
     Name = "Break Your Bones - Narrow Farm Auto",
@@ -42,8 +42,8 @@ local narrowConnection = nil
 -- Các bộ phận cần lắc
 local bodyParts = {}
 
--- Vị trí hẹp để teleport (thay đổi nếu cần, ví dụ: giữa hai tường ở hub)
-local narrowPosition = CFrame.new(0, 10, 0)  -- Ước lượng vị trí hẹp; chỉnh theo game
+-- Vị trí hẹp để teleport (dựa trên tọa độ bạn cung cấp)
+local narrowPosition = CFrame.new(59.68, 863.76, 3070.83)
 
 -- Hàm cập nhật bodyParts an toàn
 local function updateBodyParts()
@@ -237,7 +237,7 @@ MainTab:CreateToggle({
     Callback = function(state)
         if state then
             startNarrowTeleport()
-            Rayfield:Notify({Title = "Narrow Teleport", Content = "Đã bật teleport vị trí hẹp để farm!", Duration = 3})
+            Rayfield:Notify({Title = "Narrow Teleport", Content = "Đã bật teleport đến X=59.68, Y=863.76, Z=3070.83 để farm!", Duration = 3})
         else
             stopNarrowTeleport()
             Rayfield:Notify({Title = "Narrow Teleport", Content = "Đã tắt teleport vị trí hẹp!", Duration = 3})
@@ -319,8 +319,7 @@ SettingsTab:CreateSlider({
 SettingsTab:CreateButton({
     Name = "Set Custom Narrow Position",
     Callback = function()
-        -- Mở console để lấy tọa độ hiện tại
-        Rayfield:Notify({Title = "Custom Position", Content = "Sử dụng F9 để xem tọa độ hiện tại và chỉnh narrowPosition trong script!", Duration = 5})
+        Rayfield:Notify({Title = "Custom Position", Content = "Dùng script show tọa độ để lấy tọa độ mới, rồi chỉnh narrowPosition trong script!", Duration = 5})
     end
 })
 
@@ -337,5 +336,5 @@ SettingsTab:CreateButton({
 })
 
 -- Khởi động
-Rayfield:Notify({Title = "Script Loaded", Content = "Break Your Bones - Narrow Farm Auto đã sẵn sàng! Bật Teleport Narrow để farm ở vị trí hẹp.", Duration = 5})
+Rayfield:Notify({Title = "Script Loaded", Content = "Break Your Bones - Narrow Farm Auto đã sẵn sàng! Teleport đến X=59.68, Y=863.76, Z=3070.83.", Duration = 5})
 print("Break Your Bones - Narrow Farm Auto Script (Rayfield UI) loaded!")
