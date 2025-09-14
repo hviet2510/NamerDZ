@@ -1,11 +1,29 @@
--- Auto Shake & Spin Script for Break Your Bones (Mobile Optimized, Chaotic Shake)
+-- Auto Shake & Spin Script for Break Your Bones (Krnl Optimized, Chaotic Shake)
 -- Tác giả: Grok (dựa trên cơ chế ragdoll Roblox)
--- Phiên bản: 2.3 - Tối ưu mobile, Orion UI, lắc tay chân đầu hỗn loạn (vung lung tung)
--- Cách dùng: Execute trên executor mobile (Fluxus, Delta, Codex). UI tự hiện, điều khiển bằng nút.
+-- Phiên bản: 2.4 - Tối ưu cho Krnl, mobile, lắc tay chân đầu hỗn loạn
+-- Cách dùng: Execute trên Krnl (PC/mobile qua emulator). UI tự hiện, điều khiển bằng nút.
 
--- Load Orion Library
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-local Window = OrionLib:MakeWindow({Name = "Break Your Bones - Chaos Auto", HidePremium = true, SaveConfig = false, IntroText = "Chaotic Shake & Spin"})
+-- Load Orion Library (với URL dự phòng)
+local success, OrionLib = pcall(function()
+    return loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source', true))()
+end)
+if not success then
+    -- URL dự phòng nếu GitHub lỗi
+    success, OrionLib = pcall(function()
+        return loadstring(game:HttpGet('https://pastebin.com/raw/8r0h0T4Z', true))()
+    end)
+    if not success then
+        error("Không thể load Orion UI Library. Kiểm tra mạng hoặc executor!")
+    end
+end
+
+-- Tạo UI Window
+local Window = OrionLib:MakeWindow({
+    Name = "Break Your Bones - Chaos Auto",
+    HidePremium = true,
+    SaveConfig = false,
+    IntroText = "Krnl Optimized - Chaotic Shake & Spin"
+})
 
 -- Services
 local Players = game:GetService("Players")
@@ -42,13 +60,13 @@ end
 -- Cài đặt ban đầu
 updateBodyParts()
 
--- Cấu hình (tối ưu mobile, hỗn loạn)
-local shakeSpeed = 0.12  -- Tốc độ lắc nhanh hơn chút
-local shakeIntensity = 0.8  -- Cường độ lắc mạnh hơn
-local shakeRotation = 0.5  -- Xoay ngẫu nhiên (radian) để "vung lung tung"
+-- Cấu hình (tối ưu Krnl, hỗn loạn)
+local shakeSpeed = 0.12  -- Tốc độ lắc nhanh
+local shakeIntensity = 1.0  -- Cường độ lắc mạnh
+local shakeRotation = 0.7  -- Xoay hỗn loạn hơn (radian)
 local spinSpeed = 4  -- Tốc độ xoay nhẹ
 
--- Hàm lắc hỗn loạn (di chuyển + xoay ngẫu nhiên)
+-- Hàm lắc hỗn loạn (di chuyển + xoay ngẫu nhiên, thêm tween)
 local function shakePart(part)
     if not part or not part.Parent then return end
     pcall(function()
@@ -65,8 +83,11 @@ local function shakePart(part)
             math.rad(math.random(-shakeRotation * 100, shakeRotation * 100)),
             math.rad(math.random(-shakeRotation * 100, shakeRotation * 100))
         )
-        -- Áp dụng cả offset và rotation
-        part.CFrame = originalCFrame * CFrame.new(randomOffset) * randomRotation
+        -- Tween cho chuyển động mượt hơn
+        local goalCFrame = originalCFrame * CFrame.new(randomOffset) * randomRotation
+        local tweenInfo = TweenInfo.new(shakeSpeed / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+        local tween = TweenService:Create(part, tweenInfo, {CFrame = goalCFrame})
+        tween:Play()
     end)
 end
 
@@ -221,7 +242,7 @@ SettingsTab:AddSlider({
     Name = "Shake Intensity",
     Min = 20,
     Max = 100,
-    Default = 80,
+    Default = 100,
     Increment = 1,
     ValueName = " (cường độ lắc)",
     Callback = function(s)
@@ -238,7 +259,7 @@ SettingsTab:AddSlider({
     Name = "Shake Rotation",
     Min = 10,
     Max = 100,
-    Default = 50,
+    Default = 70,
     Increment = 1,
     ValueName = " (xoay hỗn loạn)",
     Callback = function(s)
@@ -286,8 +307,8 @@ SettingsTab:AddButton({
 -- Khởi động
 OrionLib:MakeNotification({
     Name = "Script Loaded",
-    Content = "Break Your Bones - Chaos Auto đã sẵn sàng! Dùng nút trong UI để điều khiển.",
+    Content = "Break Your Bones - Chaos Auto (Krnl) đã sẵn sàng! Dùng nút trong UI để điều khiển.",
     Time = 5
 })
 OrionLib:Init()
-print("Break Your Bones - Chaos Auto Script (Orion UI) loaded!")
+print("Break Your Bones - Chaos Auto Script (Krnl, Orion UI) loaded!")
