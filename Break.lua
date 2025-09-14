@@ -1,6 +1,6 @@
--- Auto Shake & Spin Script for Break Your Bones (Rayfield UI, Narrow Teleport Farm)
+-- Auto Shake & Spin Script for Break Your Bones (Rayfield UI, Narrow Velocity Move Farm)
 -- Tác giả: Grok (dựa trên cơ chế ragdoll Roblox)
--- Phiên bản: 3.0 - Tối ưu Krnl/mobile, Rayfield UI link mới, lắc hỗn loạn, teleport đến tọa độ X=59.68, Y=863.76, Z=3070.83
+-- Phiên bản: 3.13 - Tối ưu Krnl/mobile, Rayfield UI link mới, velocity di chuyển lặp với delay đến X=-59.41, Y=864.09, Z=-3069.94, fix lỗi velocity với ragdoll khác
 -- Cách dùng: Execute trên Krnl (PC/mobile qua emulator). UI tự hiện, điều khiển bằng nút.
 
 -- Load Rayfield UI Library với link mới
@@ -29,6 +29,7 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid", 10)
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
 
 -- Biến trạng thái
@@ -38,12 +39,17 @@ local narrowEnabled = false
 local shakeConnection = nil
 local spinConnection = nil
 local narrowConnection = nil
+local velocityConnection = nil
+local ragdollState = false  -- Theo dõi trạng thái ragdoll
 
 -- Các bộ phận cần lắc
 local bodyParts = {}
 
--- Vị trí hẹp để teleport (dựa trên tọa độ bạn cung cấp)
-local narrowPosition = CFrame.new(59.68, 863.76, 3070.83)
+-- Vị trí hẹp để di chuyển bằng velocity
+local targetPosition = Vector3.new(-59.41, 864.09, -3069.94)  -- Tọa độ mới
+local moveSpeed = 50  -- Tốc độ di chuyển (tùy chỉnh qua slider)
+local moveDelay = 5   -- Delay giữa các lần di chuyển (tùy chỉnh qua slider)
+local velocityForce = Instance.new("BodyVelocity")
 
 -- Hàm cập nhật bodyParts an toàn
 local function updateBodyParts()
@@ -68,7 +74,6 @@ local shakeSpeed = 0.12
 local shakeIntensity = 1.0
 local shakeRotation = 0.7
 local spinSpeed = 4
-local teleportDelay = 5  -- Giây giữa các lần teleport
 
 -- Hàm lắc hỗn loạn
 local function shakePart(part)
@@ -82,8 +87,8 @@ local function shakePart(part)
         )
         local randomRotation = CFrame.Angles(
             math.rad(math.random(-shakeRotation * 100, shakeRotation * 100)),
-            math.rad(math.random(-shakeRotation * 100, shakeRotation * 100)),
-            math.rad(math.random(-shakeRotation * 100, shakeRotation * 100))
+            math.random(-shakeRotation * 100, shakeRotation * 100),
+            math.random(-shakeRotation * 100, shakeRotation * 100)
         )
         local goalCFrame = originalCFrame * CFrame.new(randomOffset) * randomRotation
         local tweenInfo = TweenInfo.new(shakeSpeed / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
@@ -149,48 +154,123 @@ local function stopSpin()
     end
 end
 
--- Hàm teleport đến vị trí hẹp
-local function teleportToNarrow()
-    if not humanoidRootPart or not humanoidRootPart.Parent then return end
+-- Hàm di chuyển bằng velocity với xử lý ragdoll
+local function moveWithVelocity()
+    if not humanoid or not humanoidRootPart or not humanoidRootPart.Parent or ragdollState then return end
     pcall(function()
-        humanoidRootPart.CFrame = narrowPosition
+        -- Khôi phục trạng thái ragdoll trước khi di chuyển
+        humanoid.PlatformStand = false
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        task.wait(0.2)  -- Delay để ổn định
+
+        -- Tạo và áp dụng BodyVelocity
+        velocityForce.Parent = humanoidRootPart
+        velocityForce.Velocity = (targetPosition - humanoidRootPart.Position).Unit * moveSpeed
+        velocityForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+
+        -- Kiểm tra khoảng cách và dừng khi đến gần
+        velocityConnection = RunService.RenderStepped:Connect(function()
+            if not narrowEnabled or not humanoidRootPart.Parent or ragdollState then
+                velocityForce:Destroy()
+                if velocityConnection then
+                    velocityConnection:Disconnect()
+                    velocityConnection = nil
+                end
+                return
+            end
+            local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+            if distance < 5 then  -- Khi cách đích dưới 5 studs, dừng lần này
+                velocityForce:Destroy()
+                if velocityConnection then
+                    velocityConnection:Disconnect()
+                    velocityConnection = nil
+                end
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                updateBodyParts()
+                if #bodyParts < 5 then
+                    Rayfield:Notify({Title = "Cảnh báo Ragdoll", Content = "Phát hiện mất bộ phận, đang khôi phục!", Duration = 3})
+                    character:BreakJoints()
+                    task.wait(0.5)
+                    humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                    updateBodyParts()
+                end
+            end
+        end)
     end)
 end
 
--- Loop teleport hẹp
-local function startNarrowTeleport()
-    if narrowEnabled or narrowConnection or not character then return end
+-- Loop di chuyển bằng velocity với delay
+local function startNarrowMove()
+    if narrowEnabled or not character then return end
     narrowEnabled = true
     narrowConnection = RunService.Heartbeat:Connect(function()
-        if not character or not character.Parent then
-            narrowEnabled = false
-            if narrowConnection then narrowConnection:Disconnect() end
+        if not narrowEnabled or not character or not character.Parent then
+            if narrowConnection then
+                narrowConnection:Disconnect()
+                narrowConnection = nil
+            end
             return
         end
-        teleportToNarrow()
-        task.wait(teleportDelay)  -- Teleport định kỳ
+        moveWithVelocity()  -- Di chuyển một lần, lặp với delay
+        task.wait(moveDelay)  -- Delay giữa các lần di chuyển
     end)
 end
 
-local function stopNarrowTeleport()
+local function stopNarrowMove()
     narrowEnabled = false
     if narrowConnection then
         narrowConnection:Disconnect()
         narrowConnection = nil
     end
+    if velocityConnection then
+        velocityConnection:Disconnect()
+        velocityConnection = nil
+    end
+    if velocityForce and velocityForce.Parent then
+        velocityForce:Destroy()
+    end
+    if humanoid then
+        humanoid.PlatformStand = false
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    Rayfield:Notify({Title = "Velocity Move", Content = "Đã dừng di chuyển hoàn toàn!", Duration = 3})
 end
 
--- Xử lý respawn
+-- Theo dõi trạng thái ragdoll
+local function setupRagdollListener()
+    humanoid.StateChanged:Connect(function(oldState, newState)
+        if newState == Enum.HumanoidStateType.Ragdoll then
+            ragdollState = true
+            if velocityForce and velocityForce.Parent then
+                velocityForce:Destroy()
+            end
+            if velocityConnection then
+                velocityConnection:Disconnect()
+                velocityConnection = nil
+            end
+            Rayfield:Notify({Title = "Ragdoll Detected", Content = "Ragdoll kích hoạt, tạm dừng velocity!", Duration = 3})
+        elseif newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.GettingUp then
+            ragdollState = false
+            if narrowEnabled and not velocityConnection then
+                moveWithVelocity()  -- Khôi phục di chuyển khi thoát ragdoll
+            end
+        end
+    end)
+end
+
+-- Xử lý respawn (tiếp tục lặp lại khi hoàn thành ván)
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
+    humanoid = character:WaitForChild("Humanoid", 10)
     humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
     updateBodyParts()
     task.wait(2)  -- Chờ load
+    setupRagdollListener()  -- Thiết lập listener ragdoll
+    if narrowEnabled then
+        startNarrowMove()  -- Tiếp tục lặp lại khi respawn
+    end
     if shakeEnabled then startShake() end
     if spinEnabled then startSpin() end
-    if narrowEnabled then 
-        startNarrowTeleport() 
-    end
 end)
 
 -- UI Setup với Rayfield
@@ -229,18 +309,18 @@ MainTab:CreateToggle({
     end
 })
 
--- Toggle Teleport Narrow
+-- Toggle Velocity Move Narrow (lặp với delay)
 MainTab:CreateToggle({
-    Name = "Auto Teleport Narrow Spot",
+    Name = "Auto Velocity Move Narrow Spot",
     CurrentValue = false,
-    Flag = "NarrowTeleportToggle",
+    Flag = "NarrowMoveToggle",
     Callback = function(state)
         if state then
-            startNarrowTeleport()
-            Rayfield:Notify({Title = "Narrow Teleport", Content = "Đã bật teleport đến X=59.68, Y=863.76, Z=3070.83 để farm!", Duration = 3})
+            startNarrowMove()
+            Rayfield:Notify({Title = "Velocity Move", Content = "Đã bật di chuyển lặp lại đến X=-59.41, Y=864.09, Z=-3069.94!", Duration = 3})
         else
-            stopNarrowTeleport()
-            Rayfield:Notify({Title = "Narrow Teleport", Content = "Đã tắt teleport vị trí hẹp!", Duration = 3})
+            stopNarrowMove()
+            Rayfield:Notify({Title = "Velocity Move", Content = "Đã tắt di chuyển vị trí hẹp!", Duration = 3})
         end
     end
 })
@@ -304,22 +384,87 @@ SettingsTab:CreateSlider({
 })
 
 SettingsTab:CreateSlider({
-    Name = "Teleport Delay",
-    Range = {2, 10},
+    Name = "Move Speed",
+    Range = {10, 100},
     Increment = 1,
-    CurrentValue = 5,
-    Flag = "TeleportDelaySlider",
+    CurrentValue = 50,
+    Flag = "MoveSpeedSlider",
     Callback = function(s)
-        teleportDelay = s
-        Rayfield:Notify({Title = "Teleport Delay", Content = "Delay teleport: " .. teleportDelay .. " giây", Duration = 3})
+        moveSpeed = s
+        Rayfield:Notify({Title = "Move Speed", Content = "Tốc độ di chuyển: " .. moveSpeed, Duration = 3})
     end
 })
 
--- Nút chỉnh vị trí hẹp (thủ công)
+SettingsTab:CreateSlider({
+    Name = "Move Delay",
+    Range = {2, 10},
+    Increment = 1,
+    CurrentValue = 5,
+    Flag = "MoveDelaySlider",
+    Callback = function(s)
+        moveDelay = s
+        Rayfield:Notify({Title = "Move Delay", Content = "Delay di chuyển: " .. moveDelay .. " giây", Duration = 3})
+    end
+})
+
+-- Input cho tọa độ tùy chỉnh
+SettingsTab:CreateInput({
+    Name = "Set Custom X Coordinate",
+    PlaceholderText = "Nhập X (ví dụ: -59.41)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local x = tonumber(text)
+        if x then
+            targetPosition = Vector3.new(x, targetPosition.Y, targetPosition.Z)
+            Rayfield:Notify({Title = "Custom X", Content = "Đã đặt X=" .. x, Duration = 3})
+        else
+            Rayfield:Notify({Title = "Lỗi", Content = "X phải là số!", Duration = 3})
+        end
+    end
+})
+
+SettingsTab:CreateInput({
+    Name = "Set Custom Y Coordinate",
+    PlaceholderText = "Nhập Y (ví dụ: 864.09)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local y = tonumber(text)
+        if y then
+            targetPosition = Vector3.new(targetPosition.X, y, targetPosition.Z)
+            Rayfield:Notify({Title = "Custom Y", Content = "Đã đặt Y=" .. y, Duration = 3})
+        else
+            Rayfield:Notify({Title = "Lỗi", Content = "Y phải là số!", Duration = 3})
+        end
+    end
+})
+
+SettingsTab:CreateInput({
+    Name = "Set Custom Z Coordinate",
+    PlaceholderText = "Nhập Z (ví dụ: -3069.94)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local z = tonumber(text)
+        if z then
+            targetPosition = Vector3.new(targetPosition.X, targetPosition.Y, z)
+            Rayfield:Notify({Title = "Custom Z", Content = "Đã đặt Z=" .. z, Duration = 3})
+        else
+            Rayfield:Notify({Title = "Lỗi", Content = "Z phải là số!", Duration = 3})
+        end
+    end
+})
+
+-- Nút Save Position
 SettingsTab:CreateButton({
-    Name = "Set Custom Narrow Position",
+    Name = "Save Position",
     Callback = function()
-        Rayfield:Notify({Title = "Custom Position", Content = "Dùng script show tọa độ để lấy tọa độ mới, rồi chỉnh narrowPosition trong script!", Duration = 5})
+        if humanoidRootPart and humanoidRootPart.Parent then
+            local pos = humanoidRootPart.Position
+            targetPosition = pos
+            print("Tọa độ đã lưu: X=" .. string.format("%.2f", pos.X) .. ", Y=" .. string.format("%.2f", pos.Y) .. ", Z=" .. string.format("%.2f", pos.Z))
+            Rayfield:Notify({Title = "Save Position", Content = "Đã lưu tọa độ hiện tại: X=" .. string.format("%.2f", pos.X) .. ", Y=" .. string.format("%.2f", pos.Y) .. ", Z=" .. string.format("%.2f", pos.Z), Duration = 5})
+        else
+            Rayfield:Notify({Title = "Lỗi", Content = "Không thể lưu tọa độ, nhân vật chưa load!", Duration = 3})
+        end
     end
 })
 
@@ -329,12 +474,12 @@ SettingsTab:CreateButton({
     Callback = function()
         stopShake()
         stopSpin()
-        stopNarrowTeleport()
+        stopNarrowMove()
         Rayfield:Destroy()
         Rayfield:Notify({Title = "Script Stopped", Content = "Script đã dừng và UI bị xóa!", Duration = 5})
     end
 })
 
 -- Khởi động
-Rayfield:Notify({Title = "Script Loaded", Content = "Break Your Bones - Narrow Farm Auto đã sẵn sàng! Teleport đến X=59.68, Y=863.76, Z=3070.83.", Duration = 5})
-print("Break Your Bones - Narrow Farm Auto Script (Rayfield UI) loaded!")
+Rayfield:Notify({Title = "Script Loaded", Content = "Break Your Bones - Narrow Farm Auto đã sẵn sàng! Di chuyển lặp lại đến X=-59.41, Y=864.09, Z=-3069.94, fix lỗi velocity với ragdoll khác.", Duration = 5})
+print("Break Your Bones - Narrow Farm Auto Script (Rayfield UI v3.13) loaded!")
