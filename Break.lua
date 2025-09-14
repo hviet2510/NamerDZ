@@ -4,7 +4,7 @@
 -- Cách dùng: Execute trên Krnl (PC/mobile qua emulator). UI tự hiện, điều khiển bằng nút.
 
 -- Load Rayfield UI Library
-local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua"))()
 local Window = Rayfield:CreateWindow({
     Name = "Break Your Bones - Chaos Auto",
     LoadingTitle = "Rayfield UI",
