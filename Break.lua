@@ -1,11 +1,11 @@
--- Auto Shake & Spin Script for Break Your Bones (Mobile Optimized)
+-- Auto Shake & Spin Script for Break Your Bones (Mobile Optimized, Chaotic Shake)
 -- Tác giả: Grok (dựa trên cơ chế ragdoll Roblox)
--- Phiên bản: 2.1 - Tối ưu cho mobile, Kavo UI cảm ứng, hiệu suất cao
--- Cách dùng: Execute trên executor mobile (Fluxus, Delta, v.v.). UI tự hiện, điều khiển bằng nút cảm ứng.
+-- Phiên bản: 2.3 - Tối ưu mobile, Orion UI, lắc tay chân đầu hỗn loạn (vung lung tung)
+-- Cách dùng: Execute trên executor mobile (Fluxus, Delta, Codex). UI tự hiện, điều khiển bằng nút.
 
--- Load Kavo UI Library (tối ưu cho mobile)
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Break Your Bones - Mobile Auto", "DarkTheme")
+-- Load Orion Library
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "Break Your Bones - Chaos Auto", HidePremium = true, SaveConfig = false, IntroText = "Chaotic Shake & Spin"})
 
 -- Services
 local Players = game:GetService("Players")
@@ -19,7 +19,6 @@ local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
 -- Biến trạng thái
 local shakeEnabled = false
 local spinEnabled = false
-local uiVisible = true
 local shakeConnection = nil
 local spinConnection = nil
 
@@ -43,26 +42,35 @@ end
 -- Cài đặt ban đầu
 updateBodyParts()
 
--- Cấu hình (tối ưu cho mobile)
-local shakeSpeed = 0.15  -- Tăng nhẹ để giảm lag trên mobile
-local shakeIntensity = 0.4  -- Giảm cường độ để mượt hơn
-local spinSpeed = 4  -- Tốc độ xoay nhẹ hơn cho mobile
+-- Cấu hình (tối ưu mobile, hỗn loạn)
+local shakeSpeed = 0.12  -- Tốc độ lắc nhanh hơn chút
+local shakeIntensity = 0.8  -- Cường độ lắc mạnh hơn
+local shakeRotation = 0.5  -- Xoay ngẫu nhiên (radian) để "vung lung tung"
+local spinSpeed = 4  -- Tốc độ xoay nhẹ
 
--- Hàm lắc một bộ phận (an toàn với pcall)
+-- Hàm lắc hỗn loạn (di chuyển + xoay ngẫu nhiên)
 local function shakePart(part)
     if not part or not part.Parent then return end
     pcall(function()
         local originalCFrame = part.CFrame
+        -- Offset ngẫu nhiên
         local randomOffset = Vector3.new(
             math.random(-shakeIntensity, shakeIntensity),
             math.random(-shakeIntensity, shakeIntensity),
             math.random(-shakeIntensity, shakeIntensity)
         )
-        part.CFrame = originalCFrame * CFrame.new(randomOffset)
+        -- Xoay ngẫu nhiên (hỗn loạn)
+        local randomRotation = CFrame.Angles(
+            math.rad(math.random(-shakeRotation * 100, shakeRotation * 100)),
+            math.rad(math.random(-shakeRotation * 100, shakeRotation * 100)),
+            math.rad(math.random(-shakeRotation * 100, shakeRotation * 100))
+        )
+        -- Áp dụng cả offset và rotation
+        part.CFrame = originalCFrame * CFrame.new(randomOffset) * randomRotation
     end)
 end
 
--- Hàm xoay nhân vật (an toàn)
+-- Hàm xoay nhân vật
 local function spinCharacter()
     if not humanoidRootPart or not humanoidRootPart.Parent then return end
     pcall(function()
@@ -71,7 +79,7 @@ local function spinCharacter()
     end)
 end
 
--- Loop lắc (riêng biệt)
+-- Loop lắc
 local function startShake()
     if shakeEnabled or shakeConnection then return end
     shakeEnabled = true
@@ -96,7 +104,7 @@ local function stopShake()
     end
 end
 
--- Loop xoay (riêng biệt)
+-- Loop xoay
 local function startSpin()
     if spinEnabled or spinConnection then return end
     spinEnabled = true
@@ -107,7 +115,7 @@ local function startSpin()
             return
         end
         spinCharacter()
-        task.wait(0.06)  -- Delay nhẹ cho mobile
+        task.wait(0.06)
     end)
 end
 
@@ -119,7 +127,7 @@ local function stopSpin()
     end
 end
 
--- Xử lý respawn an toàn
+-- Xử lý respawn
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
@@ -128,67 +136,158 @@ player.CharacterAdded:Connect(function(newChar)
     if spinEnabled then startSpin() end
 end)
 
--- UI Setup với Kavo Library (tối ưu cảm ứng)
-local MainTab = Window:NewTab("Main")
-local MainSection = MainTab:NewSection("Auto Controls")
+-- UI Setup với Orion Library
+local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local SettingsTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 -- Toggle Shake
-MainSection:NewToggle("Auto Shake", "Bật/tắt lắc tay chân đầu", function(state)
-    if state then
-        startShake()
-        Library:Notify("Auto Shake: BẬT", 3)
-    else
-        stopShake()
-        Library:Notify("Auto Shake: TẮT", 3)
+MainTab:AddToggle({
+    Name = "Auto Chaos Shake",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startShake()
+            OrionLib:MakeNotification({
+                Name = "Chaos Shake",
+                Content = "Đã bật lắc hỗn loạn!",
+                Time = 3
+            })
+        else
+            stopShake()
+            OrionLib:MakeNotification({
+                Name = "Chaos Shake",
+                Content = "Đã tắt lắc hỗn loạn!",
+                Time = 3
+            })
+        end
     end
-end)
+})
 
 -- Toggle Spin
-MainSection:NewToggle("Auto Spin", "Bật/tắt xoay nhân vật", function(state)
-    if state then
-        startSpin()
-        Library:Notify("Auto Spin: BẬT", 3)
-    else
-        stopSpin()
-        Library:Notify("Auto Spin: TẮT", 3)
+MainTab:AddToggle({
+    Name = "Auto Spin",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startSpin()
+            OrionLib:MakeNotification({
+                Name = "Auto Spin",
+                Content = "Đã bật xoay nhân vật!",
+                Time = 3
+            })
+        else
+            stopSpin()
+            OrionLib:MakeNotification({
+                Name = "Auto Spin",
+                Content = "Đã tắt xoay nhân vật!",
+                Time = 3
+            })
+        end
     end
-end)
+})
 
 -- Toggle UI Visibility
-MainSection:NewButton("Toggle UI", "Ẩn/hiện giao diện", function()
-    uiVisible = not uiVisible
-    Library:ToggleUI()
-    Library:Notify("UI: " .. (uiVisible and "Hiện" or "Ẩn"), 3)
-end)
+MainTab:AddButton({
+    Name = "Toggle UI",
+    Callback = function()
+        OrionLib:Toggle()
+        OrionLib:MakeNotification({
+            Name = "UI",
+            Content = "UI đã " .. (OrionLib:IsVisible() and "hiện" or "ẩn"),
+            Time = 3
+        })
+    end
+})
 
--- Settings Tab
-local SettingsTab = Window:NewTab("Settings")
-local SettingsSection = SettingsTab:NewSection("Adjustments")
+-- Sliders cho Settings
+SettingsTab:AddSlider({
+    Name = "Shake Speed",
+    Min = 8,
+    Max = 50,
+    Default = 12,
+    Increment = 1,
+    ValueName = " (cao hơn = chậm hơn)",
+    Callback = function(s)
+        shakeSpeed = s / 100
+        OrionLib:MakeNotification({
+            Name = "Shake Speed",
+            Content = "Tốc độ lắc: " .. shakeSpeed,
+            Time = 3
+        })
+    end
+})
 
--- Sliders (giá trị tối ưu cho mobile)
-SettingsSection:NewSlider("Shake Speed", "Tốc độ lắc (cao hơn = chậm hơn)", 50, 10, function(s)
-    shakeSpeed = s / 100  -- 0.1-0.5
-    Library:Notify("Shake Speed: " .. shakeSpeed, 3)
-end)
+SettingsTab:AddSlider({
+    Name = "Shake Intensity",
+    Min = 20,
+    Max = 100,
+    Default = 80,
+    Increment = 1,
+    ValueName = " (cường độ lắc)",
+    Callback = function(s)
+        shakeIntensity = s / 100
+        OrionLib:MakeNotification({
+            Name = "Shake Intensity",
+            Content = "Cường độ lắc: " .. shakeIntensity,
+            Time = 3
+        })
+    end
+})
 
-SettingsSection:NewSlider("Shake Intensity", "Cường độ lắc", 50, 10, function(s)
-    shakeIntensity = s / 100  -- 0.1-0.5
-    Library:Notify("Shake Intensity: " .. shakeIntensity, 3)
-end)
+SettingsTab:AddSlider({
+    Name = "Shake Rotation",
+    Min = 10,
+    Max = 100,
+    Default = 50,
+    Increment = 1,
+    ValueName = " (xoay hỗn loạn)",
+    Callback = function(s)
+        shakeRotation = s / 100
+        OrionLib:MakeNotification({
+            Name = "Shake Rotation",
+            Content = "Xoay hỗn loạn: " .. shakeRotation,
+            Time = 3
+        })
+    end
+})
 
-SettingsSection:NewSlider("Spin Speed", "Tốc độ xoay", 400, 10, function(s)
-    spinSpeed = s / 100  -- 0.1-4
-    Library:Notify("Spin Speed: " .. spinSpeed, 3)
-end)
+SettingsTab:AddSlider({
+    Name = "Spin Speed",
+    Min = 10,
+    Max = 400,
+    Default = 400,
+    Increment = 1,
+    ValueName = " (tốc độ xoay)",
+    Callback = function(s)
+        spinSpeed = s / 100
+        OrionLib:MakeNotification({
+            Name = "Spin Speed",
+            Content = "Tốc độ xoay: " .. spinSpeed,
+            Time = 3
+        })
+    end
+})
 
 -- Nút Destroy
-SettingsSection:NewButton("Destroy Script", "Dừng và xóa UI", function()
-    stopShake()
-    stopSpin()
-    Library:Destroy()
-    Library:Notify("Script đã dừng!", 3)
-end)
+SettingsTab:AddButton({
+    Name = "Destroy Script",
+    Callback = function()
+        stopShake()
+        stopSpin()
+        OrionLib:Destroy()
+        OrionLib:MakeNotification({
+            Name = "Script Stopped",
+            Content = "Script đã dừng và UI bị xóa!",
+            Time = 5
+        })
+    end
+})
 
 -- Khởi động
-Library:Notify("Script loaded! Sử dụng nút trong UI để điều khiển.", 5)
-print("Break Your Bones - Mobile Auto Script loaded!")
+OrionLib:MakeNotification({
+    Name = "Script Loaded",
+    Content = "Break Your Bones - Chaos Auto đã sẵn sàng! Dùng nút trong UI để điều khiển.",
+    Time = 5
+})
+OrionLib:Init()
+print("Break Your Bones - Chaos Auto Script (Orion UI) loaded!")
