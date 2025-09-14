@@ -1,28 +1,25 @@
--- Auto Shake & Spin Script for Break Your Bones (Krnl Optimized, Chaotic Shake)
+-- Auto Shake & Spin Script for Break Your Bones (Rayfield UI, Chaotic Shake)
 -- Tác giả: Grok (dựa trên cơ chế ragdoll Roblox)
--- Phiên bản: 2.5 - Tối ưu Krnl, xử lý lỗi nil, lắc tay chân đầu hỗn loạn
+-- Phiên bản: 2.6 - Tối ưu Krnl/mobile, Rayfield UI, lắc tay chân đầu hỗn loạn
 -- Cách dùng: Execute trên Krnl (PC/mobile qua emulator). UI tự hiện, điều khiển bằng nút.
 
--- Load Orion Library với xử lý lỗi
-local success, OrionLib = pcall(function()
-    return loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source', true))()
-end)
-if not success then
-    success, OrionLib = pcall(function()
-        return loadstring(game:HttpGet('https://pastebin.com/raw/8r0h0T4Z', true))()
-    end)
-end
-if not success or not OrionLib then
-    warn("Không thể load Orion UI. Script sẽ dừng.")
-    return
-end
-
--- Tạo UI Window
-local Window = OrionLib:MakeWindow({
+-- Load Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
+local Window = Rayfield:CreateWindow({
     Name = "Break Your Bones - Chaos Auto",
-    HidePremium = true,
-    SaveConfig = false,
-    IntroText = "Krnl Optimized - Chaotic Shake & Spin"
+    LoadingTitle = "Rayfield UI",
+    LoadingSubtitle = "by Grok",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "Rayfield Config"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "noinvitelink",
+        RememberJoins = true
+    },
+    KeySystem = false
 })
 
 -- Services
@@ -155,79 +152,111 @@ player.CharacterAdded:Connect(function(newChar)
     if spinEnabled then startSpin() end
 end)
 
--- UI Setup
-local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local SettingsTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+-- UI Setup với Rayfield
+local MainTab = Window:CreateTab("Main", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
 
 -- Toggle Shake
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Chaos Shake",
-    Default = false,
+    CurrentValue = false,
+    Flag = "ChaosShakeToggle",
     Callback = function(state)
         if state then
             startShake()
-            OrionLib:MakeNotification({Name = "Chaos Shake", Content = "Đã bật lắc hỗn loạn!", Time = 3})
+            Rayfield:Notify({Title = "Chaos Shake", Content = "Đã bật lắc hỗn loạn!", Duration = 3})
         else
             stopShake()
-            OrionLib:MakeNotification({Name = "Chaos Shake", Content = "Đã tắt lắc hỗn loạn!", Time = 3})
+            Rayfield:Notify({Title = "Chaos Shake", Content = "Đã tắt lắc hỗn loạn!", Duration = 3})
         end
     end
 })
 
 -- Toggle Spin
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Spin",
-    Default = false,
+    CurrentValue = false,
+    Flag = "SpinToggle",
     Callback = function(state)
         if state then
             startSpin()
-            OrionLib:MakeNotification({Name = "Auto Spin", Content = "Đã bật xoay nhân vật!", Time = 3})
+            Rayfield:Notify({Title = "Auto Spin", Content = "Đã bật xoay nhân vật!", Duration = 3})
         else
             stopSpin()
-            OrionLib:MakeNotification({Name = "Auto Spin", Content = "Đã tắt xoay nhân vật!", Time = 3})
+            Rayfield:Notify({Title = "Auto Spin", Content = "Đã tắt xoay nhân vật!", Duration = 3})
         end
     end
 })
 
 -- Toggle UI
-MainTab:AddButton({
+MainTab:CreateButton({
     Name = "Toggle UI",
     Callback = function()
-        OrionLib:Toggle()
-        OrionLib:MakeNotification({Name = "UI", Content = "UI đã " .. (OrionLib:IsVisible() and "hiện" or "ẩn"), Time = 3})
+        Window:Toggle()
+        Rayfield:Notify({Title = "UI", Content = "UI đã " .. (Window:IsVisible() and "hiện" or "ẩn"), Duration = 3})
     end
 })
 
 -- Sliders
-SettingsTab:AddSlider({
-    Name = "Shake Speed", Min = 8, Max = 50, Default = 12, Increment = 1, ValueName = " (cao hơn = chậm hơn)",
-    Callback = function(s) shakeSpeed = s / 100; OrionLib:MakeNotification({Name = "Shake Speed", Content = "Tốc độ lắc: " .. shakeSpeed, Time = 3}) end
+SettingsTab:CreateSlider({
+    Name = "Shake Speed",
+    Range = {8, 50},
+    Increment = 1,
+    CurrentValue = 12,
+    Flag = "ShakeSpeedSlider",
+    Callback = function(s)
+        shakeSpeed = s / 100
+        Rayfield:Notify({Title = "Shake Speed", Content = "Tốc độ lắc: " .. shakeSpeed, Duration = 3})
+    end
 })
-SettingsTab:AddSlider({
-    Name = "Shake Intensity", Min = 20, Max = 100, Default = 100, Increment = 1, ValueName = " (cường độ lắc)",
-    Callback = function(s) shakeIntensity = s / 100; OrionLib:MakeNotification({Name = "Shake Intensity", Content = "Cường độ lắc: " .. shakeIntensity, Time = 3}) end
+
+SettingsTab:CreateSlider({
+    Name = "Shake Intensity",
+    Range = {20, 100},
+    Increment = 1,
+    CurrentValue = 100,
+    Flag = "ShakeIntensitySlider",
+    Callback = function(s)
+        shakeIntensity = s / 100
+        Rayfield:Notify({Title = "Shake Intensity", Content = "Cường độ lắc: " .. shakeIntensity, Duration = 3})
+    end
 })
-SettingsTab:AddSlider({
-    Name = "Shake Rotation", Min = 10, Max = 100, Default = 70, Increment = 1, ValueName = " (xoay hỗn loạn)",
-    Callback = function(s) shakeRotation = s / 100; OrionLib:MakeNotification({Name = "Shake Rotation", Content = "Xoay hỗn loạn: " .. shakeRotation, Time = 3}) end
+
+SettingsTab:CreateSlider({
+    Name = "Shake Rotation",
+    Range = {10, 100},
+    Increment = 1,
+    CurrentValue = 70,
+    Flag = "ShakeRotationSlider",
+    Callback = function(s)
+        shakeRotation = s / 100
+        Rayfield:Notify({Title = "Shake Rotation", Content = "Xoay hỗn loạn: " .. shakeRotation, Duration = 3})
+    end
 })
-SettingsTab:AddSlider({
-    Name = "Spin Speed", Min = 10, Max = 400, Default = 400, Increment = 1, ValueName = " (tốc độ xoay)",
-    Callback = function(s) spinSpeed = s / 100; OrionLib:MakeNotification({Name = "Spin Speed", Content = "Tốc độ xoay: " .. spinSpeed, Time = 3}) end
+
+SettingsTab:CreateSlider({
+    Name = "Spin Speed",
+    Range = {10, 400},
+    Increment = 1,
+    CurrentValue = 400,
+    Flag = "SpinSpeedSlider",
+    Callback = function(s)
+        spinSpeed = s / 100
+        Rayfield:Notify({Title = "Spin Speed", Content = "Tốc độ xoay: " .. spinSpeed, Duration = 3})
+    end
 })
 
 -- Nút Destroy
-SettingsTab:AddButton({
+SettingsTab:CreateButton({
     Name = "Destroy Script",
     Callback = function()
         stopShake()
         stopSpin()
-        OrionLib:Destroy()
-        OrionLib:MakeNotification({Name = "Script Stopped", Content = "Script đã dừng và UI bị xóa!", Time = 5})
+        Rayfield:Destroy()
+        Rayfield:Notify({Title = "Script Stopped", Content = "Script đã dừng và UI bị xóa!", Duration = 5})
     end
 })
 
 -- Khởi động
-OrionLib:MakeNotification({Name = "Script Loaded", Content = "Break Your Bones - Chaos Auto (Krnl) đã sẵn sàng!", Time = 5})
-OrionLib:Init()
-print("Break Your Bones - Chaos Auto Script (Krnl, Orion UI) loaded!")
+Rayfield:Notify({Title = "Script Loaded", Content = "Break Your Bones - Chaos Auto (Rayfield) đã sẵn sàng!", Duration = 5})
+print("Break Your Bones - Chaos Auto Script (Rayfield UI) loaded!")
