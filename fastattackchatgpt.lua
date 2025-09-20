@@ -38,9 +38,9 @@ local Settings = {
 }
 
 local SPEED_VALUE = 1500
-local HITBOX_SIZE = Vector3.new(30, 30, 30)
+local HITBOX_SIZE = Vector3.new(10, 10, 10) -- Giảm kích thước để hợp lý hơn
 local DEFAULT_SIZE = Vector3.new(2, 2, 1)
-local NPC_HITBOX_SIZE = Vector3.new(30, 30, 30)
+local NPC_HITBOX_SIZE = Vector3.new(30, 30, 30) -- Giữ nguyên cho NPC
 local ATTACK_DISTANCE = 100
 
 -- Tạo nút bật/tắt cho mobile
@@ -75,11 +75,10 @@ end)
 
 -- Xử lý chạm để bật/tắt UI
 toggleButton.Activated:Connect(function()
-    Window:Toggle() -- Toggle Rayfield UI
+    Window:Toggle()
     toggleButton.Text = Window:IsVisible() and "UI ON" or "UI OFF"
 end)
 
--- Đảm bảo nút tương thích với mobile
 UserInputService.TouchTapInWorld:Connect(function(position)
     if toggleButton.Visible then
         local buttonPos = toggleButton.AbsolutePosition
@@ -206,17 +205,28 @@ local function updateHitbox(character, enable)
     if rootPart then
         rootPart.Size = enable and HITBOX_SIZE or DEFAULT_SIZE
         rootPart.Transparency = enable and 0.7 or 1
-        rootPart.CanCollide = true
+        rootPart.CanCollide = false -- Tắt CanCollide để tránh va chạm bất thường
     end
 
-    for _, tool in ipairs(character:GetChildren()) do
-        if tool:IsA("Tool") then
-            for _, part in ipairs(tool:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Size = enable and HITBOX_SIZE or DEFAULT_SIZE
-                    part.Transparency = enable and 0.7 or 1
-                    part.CanCollide = true
-                end
+    local tool = character:FindFirstChildOfClass("Tool")
+    if tool and enable then
+        for _, part in ipairs(tool:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name == "Handle" then -- Tập trung vào Handle
+                part.Size = HITBOX_SIZE
+                part.Transparency = 0.7
+                part.CanCollide = false
+            elseif part:IsA("BasePart") then
+                part.Size = DEFAULT_SIZE
+                part.Transparency = 1
+                part.CanCollide = false
+            end
+        end
+    elseif tool and not enable then
+        for _, part in ipairs(tool:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Size = DEFAULT_SIZE
+                part.Transparency = 1
+                part.CanCollide = false
             end
         end
     end
